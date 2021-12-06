@@ -1,13 +1,15 @@
 import os
 import time
-
-import numpy as np
-import pims
-from moviepy.editor import VideoFileClip,concatenate_videoclips
-from skimage.io import imsave, imread
-import cv2.cv2 as cv2
+import pims                                                     # conda install -c conda-forge pims
+from moviepy.editor import VideoFileClip,concatenate_videoclips # conda install -c conda-forge moviepy
+from skimage.io import imsave                                   # conda install scikit-image
+import cv2.cv2 as cv2                                           # conda install -c conda-forge opencv
 
 def get_chunk_sizes(n):
+    """
+    :param n: Number of images in a directory
+    :return: Returns the factors for number of files
+    """
     chunk_sizes = []
     for i in range(2,n+1):
         if(n%i == 0):
@@ -15,10 +17,13 @@ def get_chunk_sizes(n):
     return chunk_sizes
 
 def test_different_chunk_size(home):
-    #home = '/home/harish/CLionProjects/ingest_tiledb/Input/'
+    """
+    Measures the execution time to convert images to video for different frame sizes
+    :param home: directory path containing image files
+    :return: None
+    """
     files = sorted(os.listdir(home))
     files = [home + s for s in files]
-    #print(len(files))
 
     factors_chunk_size = get_chunk_sizes(len(files)) #[2,4,5,8,10,20]
     exec_time = []
@@ -42,6 +47,12 @@ def test_different_chunk_size(home):
         print('{} \t {} \t {}'.format(factors_chunk_size[iter],exec_time[iter],output_size[iter]))
 
 def compress_images(home,chunk_size):
+    """
+    Compresses and converts 'chunk_size' images to a video in .avi format using MoviePy/PIMS
+    :param home: directory path containing image files
+    :param chunk_size: defines number of images/frames in a video
+    :return: None,
+    """
     files = sorted(os.listdir(home))
     files = [home + s for s in files]
 
@@ -57,8 +68,36 @@ def compress_images(home,chunk_size):
 
     print('Compression_time: {}'.format((end-start)))
 
-##def compress_videos():
-    homedir = '/home/harish/PycharmProjects/compression/factor_360/'
+def compress_images_opencv(home,out_file, fourcc, fps):
+    """
+    Compresses and saves images as video based on different codec values using OpenCV
+    :param home: directory path containing images
+    :param out_file: video filename to save
+    :param fourcc: codec values
+    :param fps: frames per second
+    :return: None
+    """
+    img_array = []
+    size = (0,0)
+    for filename in sorted(os.listdir(home)):
+        img = cv2.imread(os.path.join(home,filename))
+        height, width, layers = img.shape
+        size = (width, height)
+        img_array.append(img)
+
+    out = cv2.VideoWriter(out_file, fourcc, fps, size)
+
+    for i in range(len(img_array)):
+        out.write(img_array[i])
+    out.release()
+
+def compress_videos(homedir,out_file):
+    """
+    Concatenate videos using PIMS/MoviePy
+    :param homedir: directory path containing videos
+    :param out_file: concatenated video file path
+    :return: None
+    """
     files = sorted(os.listdir(homedir))
     files = [homedir + s for s in files]
 
@@ -68,37 +107,27 @@ def compress_images(home,chunk_size):
         videos.append(VideoFileClip(f))
 
     compressed_video = concatenate_videoclips(videos)
-    compressed_video.write_videofile('compressed_video.mp4') #the data is merged but not compressed
+    compressed_video.write_videofile(out_file) #the data is merged but not compressed
     end = time.time()
     print(round(end-start,2))
 
-##def compress_videos_cv():
-    homedir = '/home/harish/PycharmProjects/compression/factor_360/'
+def compress_videos_cv(homedir, fourcc, out_file, fps, dim_x, dim_y):
+    """
+    Concatenate videos using OpenCV
+    :param homedir: directory path of video files
+    :param fourcc: codec value
+    :param out_file: file path of concatenated video
+    :param fps: frame per second
+    :param dim_x: width of image
+    :param dim_y: height of image
+    :return:
+    """
     files = sorted(os.listdir(homedir))
     files = [homedir + s for s in files]
 
     start = time.time()
 
-    # fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
-    # video = cv2.VideoWriter("compressed_video_mp4v.mp4", fourcc, 30, (1920, 1208))
-
-    # fourcc = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
-    # video = cv2.VideoWriter("compressed_video_mjpg.mp4", fourcc, 30, (1920, 1208))
-
-    # fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    # video = cv2.VideoWriter("compressed_video_mp4v.mp4", fourcc, 30, (1920, 1208))
-    #
-    # fourcc = cv2.VideoWriter_fourcc(*"H264")
-    # video = cv2.VideoWriter("compressed_video_h264.mp4", fourcc, 30, (1920, 1208))
-    #
-    # fourcc = cv2.VideoWriter_fourcc(*'PIM1')
-    # video = cv2.VideoWriter("compressed_video_pim1.avi", fourcc, 30, (1920, 1208))
-    #
-    # fourcc = cv2.VideoWriter_fourcc(*"MJPG")
-    # video = cv2.VideoWriter("compressed_video_mjpg.avi", fourcc, 30, (1920, 1208))
-    #
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    video = cv2.VideoWriter("compressed_video_xvid.avi", fourcc, 30, (1920, 1208))
+    video = cv2.VideoWriter(out_file, fourcc, fps, (dim_x, dim_y))
 
     for f in files:
         curr_f = cv2.VideoCapture(f)
@@ -112,26 +141,20 @@ def compress_images(home,chunk_size):
     end = time.time()
     print(round(end-start,2))
 
-def get_image(video_path,image_index):
+def get_image(video_path,image_index, frame_file):
+    """
+    Decompresses a frame from video
+    :param video_path: path of video input
+    :param image_index: frame index
+    :param frame_file: path of image file to save
+    :return:
+    """
     start = time.time()
     video = pims.Video(video_path)
     image = video.get_frame(image_index)
-    imsave('frame_{}.png'.format(image_index),image)
+    imsave(frame_file,image)
     end = time.time()
-    print('{} \t {}'.format(image_index,round(end-start,2)))
-    # print('Time taken to retrieve frame {} is {} seconds'.format(image_index,(end-start)))
-
-print('Frame_index \t Time_taken')
-homedir = '/home/harish/PycharmProjects/compression/factor_360/'
-files = sorted(os.listdir(homedir))
-files = [homedir + s for s in files]
-get_image(files[0],0)
-# for i in range(359,-1,-1):
-#     get_image(files[0],i)
+    print('Time taken to retrieve frame {} is {} seconds'.format(image_index,round((end-start),2)))
 
 
-
-# compress_videos()
-# compress_videos_cv()
-# compress_images('/home/harish/CLionProjects/ingest_tiledb/Input/',10)
 
