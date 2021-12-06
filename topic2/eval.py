@@ -1,27 +1,30 @@
-from skimage.metrics import structural_similarity as ssim
-from skimage.metrics import peak_signal_noise_ratio as psnr
-import numpy as np
-import cv2
-from tifffile import imread
-from PIL import Image
-import os
-
-dirname = os.path.dirname(__file__)
-print(dirname)
+from skimage.metrics import structural_similarity as ssim   # conda install scikit-image
+from skimage.metrics import peak_signal_noise_ratio as psnr # conda install scikit-image
+import numpy as np                                          # conda install numpy
+import cv2                                                  # conda install -c conda-forge opencv
 
 def mse(imageA, imageB):
+    """
+    Mean squared error
+    """
     err = np.sum((imageA.astype("float") - imageB.astype("float")) ** 2)
     err /= float(imageA.shape[0] * imageA.shape[1])
     return err
 
 
-def compare_image(imageA, imageB, title):
+def compare_image(imageA, imageB):
+    """
+    Assesses image quality
+    """
     m = mse(imageA, imageB)
     s = ssim(imageA, imageB)
     p = psnr(imageA,imageB)
-    print('{} PSNR: {}, SSIM: {}'.format(title, round(p,2), round(s,2)))
+    print('PSNR: {}, SSIM: {}'.format(round(p,2), round(s,2)))
 
 def prepare_images(imageA,imageB):
+    """
+    Converts image to grayscale prior to image quality assessment
+    """
     a = cv2.imread(imageA)
     b = cv2.imread(imageB)
 
@@ -30,6 +33,6 @@ def prepare_images(imageA,imageB):
     return a,b
 
 a,b = prepare_images('frame_actual.png','frame_0.png')
-compare_image(a,b,'ssim')
+compare_image(a,b)
 
 
